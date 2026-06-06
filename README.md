@@ -18,6 +18,7 @@
 |TCP偏移设置|[tcp_offset](./docs/tcp_offset/TCP_OFFSET.md)|
 |URDF|[URDF](https://github.com/agilexrobotics/agx_arm_urdf)|
 |Moveit| [Moveit](./src/agx_arm_moveit/README.md) |
+|Revo2 Touch|[revo2_touch](https://github.com/kehuanjack/agx_brainco_hand_ros)|
 |Q&A|[Q&A](./docs/Q&A.md)|
 
 ---
