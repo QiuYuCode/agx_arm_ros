@@ -85,13 +85,6 @@ def generate_launch_description():
         description='Default effort for gripper commands (>= 0.0).'
     )
 
-    publish_gripper_joint_arg = DeclareLaunchArgument(
-        'publish_gripper_joint',
-        default_value='true',
-        choices=['true', 'false'],
-        description='Publish "gripper" (opening width) joint in /feedback/joint_states. '
-                    'Set false when used with MoveIt (URDF only has gripper_joint1/2).',
-    )
     control_enabled_arg = DeclareLaunchArgument(
         'control_enabled',
         default_value='true',
@@ -118,7 +111,6 @@ def generate_launch_description():
             'effector_type': LaunchConfiguration('effector_type'),
             'tcp_offset': LaunchConfiguration('tcp_offset'),
             'gripper_default_effort': LaunchConfiguration('gripper_default_effort'),
-            'publish_gripper_joint': LaunchConfiguration('publish_gripper_joint'),
             'control_enabled': LaunchConfiguration('control_enabled'),
         }],
         remappings=[
@@ -164,7 +156,6 @@ def generate_launch_description():
         enable_timeout_arg,
         tcp_offset_arg,
         gripper_default_effort_arg,
-        publish_gripper_joint_arg,
         control_enabled_arg,
         # node
         agx_arm_node,

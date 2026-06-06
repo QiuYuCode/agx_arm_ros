@@ -129,7 +129,6 @@ ros2 launch agx_arm_ctrl start_single_agx_arm_moveit.launch.py can_port:=can0 ar
 
 > This launch supports all `agx_arm_ctrl` parameters (e.g. `tcp_offset`, `speed_percent`, `auto_enable`, etc.). See [agx_arm_ctrl Launch Parameters](../../README_EN.md#launch-parameters) for details.
 > - `follow` defaults to `true`, so MoveIt subscribes to `feedback_topic` (default: `feedback/joint_states`) to track real arm state
-> - `publish_gripper_joint` is automatically set to `false`, suppressing the `gripper` (opening width) joint that does not exist in the URDF, preventing MoveIt warnings
 > - `auto_control_gate` defaults to `false`: automatic gating is disabled by default; in this mode, `control_enabled` is automatically set to `true` (control allowed).
 > - When `auto_control_gate:=true`: `agx_arm_control_gate` is launched and `control_enabled` is automatically set to `false`; the `SetBool` service named by `control_gate_service` is toggled during execution (default `control_enable`, matching `agx_arm_ctrl`; override per arm when running multiple instances).
 > - For multi-arm parallel use, you can set `namespace` for this launch (e.g. `namespace:=piper_x`)

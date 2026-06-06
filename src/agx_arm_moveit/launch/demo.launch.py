@@ -64,7 +64,7 @@ def _build_ros2_controllers_file(arm_type, effector_type, revo2_type, namespace)
         config[cm_node]["ros__parameters"].update(cm_controllers)
         config[(f"/{ns}/gripper_controller" if ns else "/gripper_controller")] = {
             "ros__parameters": {
-                "joints": ["gripper_joint1", "gripper_joint2"],
+                "joints": ["gripper"],
                 "command_interfaces": ["position"],
                 "state_interfaces": ["position", "velocity"],
             },

@@ -127,7 +127,6 @@ ros2 launch agx_arm_ctrl start_single_agx_arm_moveit.launch.py can_port:=can0 ar
 
 > 该 launch 支持所有 `agx_arm_ctrl` 参数（如 `tcp_offset`、`speed_percent`、`auto_enable` 等），详见 [agx_arm_ctrl 启动参数](../../README.md#启动参数)。
 > - `follow` 默认为 `true`，MoveIt 会订阅 `feedback_topic`（默认 `feedback/joint_states`）跟随真实臂状态
-> - `publish_gripper_joint` 自动设为 `false`，不发布 `gripper`（夹爪宽度）关节，避免 URDF 中不存在该关节名导致的 MoveIt 告警
 > - `auto_control_gate` 默认为 `false`：默认不启用自动门控；此时会自动将 `control_enabled` 设为 `true`（允许控制）。
 > - 当 `auto_control_gate:=true` 时：会启动 `agx_arm_control_gate`，并将 `control_enabled` 自动设为 `false`，仅在轨迹执行阶段通过 `control_gate_service` 指定的 `SetBool` 服务自动开门（默认 `control_enable`，与 `agx_arm_ctrl` 提供的门控服务名一致；多臂时可自定义）。
 > - 需要多机械臂并行时，可为该 launch 指定 `namespace`（例如 `namespace:=piper_x`）

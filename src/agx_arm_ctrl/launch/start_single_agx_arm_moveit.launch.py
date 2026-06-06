@@ -148,7 +148,6 @@ def generate_launch_description():
             'effector_type': LaunchConfiguration('effector_type'),
             'tcp_offset': LaunchConfiguration('tcp_offset'),
             'gripper_default_effort': LaunchConfiguration('gripper_default_effort'),
-            'publish_gripper_joint': 'false',
             'control_enabled': IfElseSubstitution(
                 LaunchConfiguration('auto_control_gate'),
                 if_value='false',

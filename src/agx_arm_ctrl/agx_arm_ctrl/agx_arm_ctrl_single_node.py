@@ -88,7 +88,6 @@ class AgxArmRosNode(Node):
         self.declare_parameter("effector_type", "none")
         self.declare_parameter("tcp_offset", [0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
         self.declare_parameter("gripper_default_effort", 1.0)
-        self.declare_parameter("publish_gripper_joint", True)
         self.declare_parameter("control_enabled", True)
 
     def _load_parameters(self):
@@ -102,7 +101,6 @@ class AgxArmRosNode(Node):
         self.effector_type = self.get_parameter("effector_type").value
         self.tcp_offset = self.get_parameter("tcp_offset").value
         self.gripper_default_effort = self.get_parameter("gripper_default_effort").value
-        self.publish_gripper_joint = self.get_parameter("publish_gripper_joint").value
         self.control_enabled = self.get_parameter("control_enabled").value
 
         if self.arm_type not in ArmModel.__dict__.values():
@@ -141,7 +139,6 @@ class AgxArmRosNode(Node):
         self.get_logger().info(f"effector_type: {self.effector_type}")
         self.get_logger().info(f"tcp_offset: {self.tcp_offset}")
         self.get_logger().info(f"gripper_default_effort: {self.gripper_default_effort}")
-        self.get_logger().info(f"publish_gripper_joint: {self.publish_gripper_joint}")
         self.get_logger().info(f"control_enabled: {self.control_enabled}")
 
     def _init_agx_arm(self):
@@ -413,17 +410,7 @@ class AgxArmRosNode(Node):
         if status is None:
             return []
 
-        gripper_joint_map = {
-            "gripper_joint1":     0.5,
-            "gripper_joint2":    -0.5,
-        }
-        if self.publish_gripper_joint:
-            gripper_joint_map[GRIPPER_JOINT_NAME] = 1.0
-
-        return [
-            (name, status.width * scale, 0.0, status.force)
-            for name, scale in gripper_joint_map.items()
-        ]
+        return [(GRIPPER_JOINT_NAME, status.width, 0.0, status.force)]
 
     def _get_gripper_joint_ctrl_data(self):
         if self.gripper is None:
@@ -432,17 +419,7 @@ class AgxArmRosNode(Node):
         if ctrl_states is None:
             return []
 
-        gripper_joint_map = {
-            "gripper_joint1":     0.5,
-            "gripper_joint2":    -0.5,
-        }
-        if self.publish_gripper_joint:
-            gripper_joint_map[GRIPPER_JOINT_NAME] = 1.0
-
-        return [
-            (name, ctrl_states.width * scale, 0.0, ctrl_states.force)
-            for name, scale in gripper_joint_map.items()
-        ]
+        return [(GRIPPER_JOINT_NAME, ctrl_states.width, 0.0, ctrl_states.force)]
 
     def _get_hand_joint_data(self):
         if self.hand is None or not self.hand.is_ok():
@@ -631,25 +608,11 @@ class AgxArmRosNode(Node):
         if self.gripper is None:
             return
 
-        # gripper_name → width scale
-        gripper_joint_map = {
-            GRIPPER_JOINT_NAME:   1.0,
-            "gripper_joint1":    2.0,
-            "gripper_joint2":    2.0,
-        }
-
-        matched = next(
-            ((name, scale) for name, scale in gripper_joint_map.items()
-             if name in joint_pos),
-            None,
-        )
-        if matched is None:
+        if GRIPPER_JOINT_NAME not in joint_pos:
             return
 
-        joint_name, scale = matched
-        width = abs(joint_pos[joint_name]) * scale
-        # Use default force if effort is 0 or not specified
-        force = joint_effort.get(joint_name, self.gripper_default_effort) or self.gripper_default_effort
+        width = abs(joint_pos[GRIPPER_JOINT_NAME])
+        force = joint_effort.get(GRIPPER_JOINT_NAME, self.gripper_default_effort) or self.gripper_default_effort
 
         try:
             self.gripper.move(width=width, force=force)

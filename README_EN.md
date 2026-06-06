@@ -234,7 +234,6 @@ ros2 launch agx_arm_ctrl start_single_agx_arm_moveit.launch.py can_port:=can0 ar
 | `enable_timeout` | `5.0` | Enable timeout (seconds) | - |
 | `tcp_offset` | `[0.0, 0.0, 0.0, 0.0, 0.0, 0.0]` | Tool Center Point (TCP) offset relative to the flange center [x, y, z, rx, ry, rz] | - |
 | `gripper_default_effort` | `1.0` | The default effort of the gripper (in N) | `>=0.0` |
-| `publish_gripper_joint` | `true` | Whether to publish the `gripper` joint (gripper opening width) in `/feedback/joint_states`. Set to `false` when used with MoveIt, as the URDF only defines `gripper_joint1`/`gripper_joint2` | `true`, `false` |
 | `control_enabled` | `true` | Whether to accept `/control/*` commands. When `false`, control topics are ignored and only feedback is published | `true`, `false` |
 | `log_level` | `info` | Log level | `debug`, `info`, `warn`, `error`, `fatal` |
 
@@ -556,13 +555,11 @@ This topic contains combined joint states for the arm and end-effector:
 
 **Gripper Joints** (requires `effector_type=agx_gripper`)
 
-By default, three joints are published: `gripper`, `gripper_joint1`, and `gripper_joint2`. If `publish_gripper_joint` is set to `false`, only `gripper_joint1` and `gripper_joint2` are published (the URDF joint names, compatible with MoveIt).
+Only the `gripper` joint (total opening width, range [0, 0.1] m) is exposed externally. `gripper_joint1`/`gripper_joint2` are internal mimic joints in the URDF; `robot_state_publisher` computes them automatically.
 
 | Joint Name | `position` | `velocity` | `effort` |
 |------------|------------|------------|----------|
 | `gripper` | Gripper opening width (m), range [0, 0.1] | 0.0 | Force (N) |
-| `gripper_joint1` | Single jaw displacement = width × 0.5 (m) | 0.0 | Force (N) |
-| `gripper_joint2` | Single jaw displacement = width × -0.5 (m) | 0.0 | Force (N) |
 
 **Dexterous Hand Joints** (requires `effector_type=revo2`)
 

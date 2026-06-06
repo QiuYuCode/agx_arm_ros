@@ -234,7 +234,6 @@ ros2 launch agx_arm_ctrl start_single_agx_arm_moveit.launch.py can_port:=can0 ar
 | `enable_timeout` | `5.0` | 使能超时 (秒) | - |
 | `tcp_offset` | `[0.0, 0.0, 0.0, 0.0, 0.0, 0.0]` | 工具中心(TCP)相对法兰盘中心的偏移 [x, y, z, rx, ry, rz] | - |
 | `gripper_default_effort` | `1.0` | 夹爪默认力（单位：N） | `>=0.0` |
-| `publish_gripper_joint` | `true` | 是否在 `/feedback/joint_states` 中发布 `gripper` 关节（夹爪开口宽度）。与 MoveIt 联用时设为 `false`，因 URDF 中仅有 `gripper_joint1`/`gripper_joint2` | `true`, `false` |
 | `control_enabled` | `true` | 是否接收 `/control/*` 指令。设为 `false` 时会拒绝控制话题，仅保留反馈发布 | `true`, `false` |
 | `log_level` | `info` | 日志级别 | `debug`, `info`, `warn`, `error`, `fatal` |
 
@@ -560,13 +559,11 @@ cd src/agx_arm_ros
 
 **夹爪关节** （需配置 `effector_type=agx_gripper`）
 
-默认发布 `gripper`、`gripper_joint1`、`gripper_joint2` 三个关节；若 `publish_gripper_joint` 设为 `false`，仅发布 `gripper_joint1` 和 `gripper_joint2`（URDF 中的关节名，适配 MoveIt）。
+对外仅暴露 `gripper` 关节（夹爪总开口宽度，范围 [0, 0.1] m）。URDF 中 `gripper_joint1`/`gripper_joint2` 为内部 mimic 关节，由 `robot_state_publisher` 自动计算，无需手动发布。
 
 | 关节名 | `position` 说明 | `velocity` | `effort` |
 |--------|-----------------|------------|----------|
 | `gripper` | 夹爪开口宽度 (m)，范围 [0, 0.1] | 0.0 | 力 (N) |
-| `gripper_joint1` | 单侧夹片位移 = 宽度 × 0.5 (m) | 0.0 | 力 (N) |
-| `gripper_joint2` | 单侧夹片位移 = 宽度 × -0.5 (m) | 0.0 | 力 (N) |
 
 **灵巧手关节**（需配置 `effector_type=revo2`）
 

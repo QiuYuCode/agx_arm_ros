@@ -33,8 +33,7 @@ gripper_controller:
   ros__parameters:
     allow_nonzero_velocity_at_trajectory_end: false
     joints:
-      - gripper_joint1
-      - gripper_joint2
+      - gripper
     command_interfaces:
       - position
     state_interfaces:
