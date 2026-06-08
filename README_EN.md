@@ -57,12 +57,28 @@ pip3 install .
 
 2. Clone repository
 
+    Recommended (clone with submodules in one step):
+
     ```bash
     git clone -b ros2 --recurse-submodules https://github.com/agilexrobotics/agx_arm_ros.git
+    cd agx_arm_ros/
     ```
+
+    If you cloned the repository **without** `--recurse-submodules`, or the submodule directories are empty, you need to initialize and fetch all submodules:
 
     ```bash
     cd agx_arm_ros/
+    git submodule update --init --recursive
+    ```
+
+    **Typical use cases:**
+    - You forgot to add `--recurse-submodules` when cloning for the first time
+    - New submodules (such as `agx_arm_urdf`) were added after you pulled the repository, and they are not initialized locally yet
+    - The submodule directory exists but contains no files
+
+    To update submodules to the latest commits on their remote tracking branches (this repo tracks the `main` branch for its submodules):
+
+    ```bash
     git submodule update --remote --recursive
     ```
 

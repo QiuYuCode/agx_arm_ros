@@ -57,12 +57,28 @@ pip3 install .
 
 2. 克隆仓库
 
+    推荐方式（克隆时一并拉取子模块）：
+
     ```bash
     git clone -b ros2 --recurse-submodules https://github.com/agilexrobotics/agx_arm_ros.git
+    cd agx_arm_ros/
     ```
+
+    若克隆时未加 `--recurse-submodules`，或子模块目录为空，需初始化并拉取子模块：
 
     ```bash
     cd agx_arm_ros/
+    git submodule update --init --recursive
+    ```
+
+    **适用场景：**
+    - 首次克隆时忘记加 `--recurse-submodules`
+    - 拉取代码后新增了子模块（如 `agx_arm_urdf`），本地尚未初始化
+    - 子模块目录存在但内容为空
+
+    若需将子模块更新到远程分支最新提交（本仓库子模块跟踪 `main` 分支）：
+
+    ```bash
     git submodule update --remote --recursive
     ```
 
