@@ -266,6 +266,89 @@ Based on the `follow` parameter, below are common MoveIt usage patterns:
   - Use the **Goal State** dropdown to select preset states (e.g. `home`, `gripper_open`, `hand_close`, etc.)
   - Click **Plan & Execute** to plan and execute the trajectory
 
+### 3.5 Topic and Action Trajectory Control
+
+MoveIt executes trajectories through the `ros2_control` `JointTrajectoryController`. When you click **Plan & Execute** in RViz, MoveIt internally calls the `arm_controller` Action; you can also send trajectories manually from the command line.
+
+| Interface | Type | Message/Action Type | Description |
+|-----------|------|---------------------|-------------|
+| `/arm_controller/follow_joint_trajectory` | Action | `control_msgs/action/FollowJointTrajectory` | Trajectory execution (recommended); supports feedback and cancellation |
+| `/arm_controller/joint_trajectory` | Topic | `trajectory_msgs/msg/JointTrajectory` | Trajectory publish (fire-and-forget); no execution status feedback |
+| `/control/joint_states` | Topic | `sensor_msgs/msg/JointState` | Interpolated joint states output (`ros2_control_node` publishes via `control_topic` remap) |
+
+> - Paths above are for the default (root) namespace. If `namespace` is set, prefix each interface with the namespace (e.g. `/left/arm_controller/...`).
+> - For real hardware, `agx_arm_ctrl` must also be running; it subscribes to `/control/joint_states` and forwards interpolated commands to the physical arm.
+> - When `auto_control_gate:=true`, ensure the gate is open before execution; otherwise `/control/joint_states` will not reach the real arm.
+> - Nero has 7 joints (`joint1`–`joint7`); all other arm types have 6 joints (`joint1`–`joint6`).
+
+#### Piper Example: Send Trajectory via Action
+
+```bash
+ros2 action send_goal /arm_controller/follow_joint_trajectory control_msgs/action/FollowJointTrajectory "{
+  trajectory: {
+    joint_names: [
+      'joint1',
+      'joint2',
+      'joint3',
+      'joint4',
+      'joint5',
+      'joint6'
+    ],
+    points: [
+      { # 1
+        positions: [0.0, 0.1, -0.1, 0.0, 0.0, 0.0],
+        time_from_start: {sec: 1, nanosec: 0}
+      },
+      {  # 2
+        positions: [0.2, 0.8, -0.8, 0.0, -0.4, 0.0],
+        time_from_start: {sec: 3, nanosec: 0}
+      },
+      {  # 3
+        positions: [-0.2, 0.4, -0.4, 0.2, -0.2, 1.57],
+        time_from_start: {sec: 5, nanosec: 0}
+      },
+      {  # 4
+        positions: [0.0, 0.2, -0.2, 0.0, 0.0, 0.0],
+        time_from_start: {sec: 7, nanosec: 0}
+      },
+      {  # 5
+        positions: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+        time_from_start: {sec: 9, nanosec: 0}
+      }
+    ]
+  }
+}"
+```
+
+#### Piper Example: Send Trajectory via Topic
+
+```bash
+ros2 topic pub --once /arm_controller/joint_trajectory \
+  trajectory_msgs/msg/JointTrajectory \
+  '{
+    joint_names: [
+      "joint1",
+      "joint2",
+      "joint3",
+      "joint4",
+      "joint5",
+      "joint6"
+    ],
+    points: [{
+      positions: [0.0, 0.4, -0.6, 0.0, 0.0, 0.0],
+      time_from_start: {sec: 2}
+    }]
+  }'
+```
+
+#### Monitor Interpolated Trajectory Output
+
+After interpolation, the controller publishes joint states to `/control/joint_states` (customizable via `control_topic`):
+
+```bash
+ros2 topic echo /control/joint_states
+```
+
 ---
 
 ## 4. Troubleshooting

@@ -264,6 +264,89 @@ ros2 launch agx_arm_moveit demo.launch.py arm_type:=nero effector_type:=revo2 re
   - **Goal State** 下拉菜单可选择预设动作（如 `home`、`gripper_open`、`hand_close` 等）
   - 点击 **Plan & Execute** 开始规划并执行
 
+### 3.5 Topic 与 Action 轨迹控制
+
+MoveIt 通过 `ros2_control` 的 `JointTrajectoryController` 执行轨迹。RViz 中点击 **Plan & Execute** 时，内部会调用 `arm_controller` 的 Action；也可在命令行手动下发轨迹。
+
+| 接口 | 类型 | 消息/动作类型 | 说明 |
+|------|------|---------------|------|
+| `/arm_controller/follow_joint_trajectory` | Action | `control_msgs/action/FollowJointTrajectory` | 轨迹执行（推荐），支持执行反馈与取消 |
+| `/arm_controller/joint_trajectory` | Topic | `trajectory_msgs/msg/JointTrajectory` | 轨迹下发（fire-and-forget），无执行状态反馈 |
+| `/control/joint_states` | Topic | `sensor_msgs/msg/JointState` | 轨迹插值后的关节状态输出（`ros2_control_node` 经 `control_topic` remap 发布） |
+
+> - 以上路径为默认命名空间下的名称；若设置了 `namespace`，请在各接口前加上命名空间前缀（如 `/left/arm_controller/...`）。
+> - 控制真实机械臂时，需同时启动 `agx_arm_ctrl`；`agx_arm_ctrl` 订阅 `/control/joint_states` 并将插值结果下发到真机。
+> - 若启用了 `auto_control_gate:=true`，执行前须确保门控已打开，否则 `/control/joint_states` 不会被真机接收。
+> - Nero 臂型有 7 个关节（`joint1`–`joint7`），其余臂型为 6 个关节（`joint1`–`joint6`）。
+
+#### Piper 示例：Action 下发轨迹
+
+```bash
+ros2 action send_goal /arm_controller/follow_joint_trajectory control_msgs/action/FollowJointTrajectory "{
+  trajectory: {
+    joint_names: [
+      'joint1',
+      'joint2',
+      'joint3',
+      'joint4',
+      'joint5',
+      'joint6'
+    ],
+    points: [
+      { # 1
+        positions: [0.0, 0.1, -0.1, 0.0, 0.0, 0.0],
+        time_from_start: {sec: 1, nanosec: 0}
+      },
+      {  # 2
+        positions: [0.2, 0.8, -0.8, 0.0, -0.4, 0.0],
+        time_from_start: {sec: 3, nanosec: 0}
+      },
+      {  # 3
+        positions: [-0.2, 0.4, -0.4, 0.2, -0.2, 1.57],
+        time_from_start: {sec: 5, nanosec: 0}
+      },
+      {  # 4
+        positions: [0.0, 0.2, -0.2, 0.0, 0.0, 0.0],
+        time_from_start: {sec: 7, nanosec: 0}
+      },
+      {  # 5
+        positions: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+        time_from_start: {sec: 9, nanosec: 0}
+      }
+    ]
+  }
+}"
+```
+
+#### Piper 示例：Topic 下发轨迹
+
+```bash
+ros2 topic pub --once /arm_controller/joint_trajectory \
+  trajectory_msgs/msg/JointTrajectory \
+  '{
+    joint_names: [
+      "joint1",
+      "joint2",
+      "joint3",
+      "joint4",
+      "joint5",
+      "joint6"
+    ],
+    points: [{
+      positions: [0.0, 0.4, -0.6, 0.0, 0.0, 0.0],
+      time_from_start: {sec: 2}
+    }]
+  }'
+```
+
+#### 查看轨迹插值输出
+
+控制器按轨迹插值后，将关节状态发布到 `/control/joint_states`（可通过 `control_topic` 参数自定义）：
+
+```bash
+ros2 topic echo /control/joint_states
+```
+
 ---
 
 ## 4 可能遇见的问题
