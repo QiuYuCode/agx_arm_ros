@@ -18,7 +18,7 @@ from agx_arm_msgs.msg import (
     HandStatus, HandCmd, HandPositionTimeCmd,
     MoveMITMsg
 )
-from agx_arm_ctrl.effector import AgxGripperWrapper, Revo2Wrapper
+from agx_arm_ctrl.effector import AgxGripperWrapper, Revo2Wrapper, Revo2TouchWrapper
 
 GRIPPER_JOINT_NAME = "gripper"
 
@@ -40,6 +40,24 @@ REVO2_HAND_JOINT_TO_FINGER_ATTR = {
     f"{prefix}{suffix}": (attr, max_angle)
     for prefix in ("left_", "right_")
     for suffix, attr, max_angle in REVO2_FINGER_CONFIG
+}
+
+REVO2_FINGER_POSITION_MAX = {
+    "thumb_base": 100,
+    "thumb_tip": 79.8,
+    "index_finger": 100,
+    "middle_finger": 100,
+    "ring_finger": 100,
+    "pinky_finger": 100,
+}
+
+REVO2_TOUCH_FINGER_POSITION_MAX = {
+    "thumb_base": 889,
+    "thumb_tip": 478, # 599
+    "index_finger": 809,
+    "middle_finger": 809,
+    "ring_finger": 809,
+    "pinky_finger": 809,
 }
 
 from typing import TYPE_CHECKING
@@ -86,6 +104,7 @@ class AgxArmRosNode(Node):
         self.declare_parameter("pub_rate", 200)
         self.declare_parameter("enable_timeout", 5.0)
         self.declare_parameter("effector_type", "none")
+        self.declare_parameter("revo2_type", "left")
         self.declare_parameter("tcp_offset", [0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
         self.declare_parameter("gripper_default_effort", 1.0)
         self.declare_parameter("control_enabled", True)
@@ -99,6 +118,7 @@ class AgxArmRosNode(Node):
         self.pub_rate = self.get_parameter("pub_rate").value
         self.enable_timeout = self.get_parameter("enable_timeout").value
         self.effector_type = self.get_parameter("effector_type").value
+        self.revo2_type = self.get_parameter("revo2_type").value
         self.tcp_offset = self.get_parameter("tcp_offset").value
         self.gripper_default_effort = self.get_parameter("gripper_default_effort").value
         self.control_enabled = self.get_parameter("control_enabled").value
@@ -137,6 +157,8 @@ class AgxArmRosNode(Node):
         self.get_logger().info(f"pub_rate: {self.pub_rate}")
         self.get_logger().info(f"enable_timeout: {self.enable_timeout}")
         self.get_logger().info(f"effector_type: {self.effector_type}")
+        if "revo2" in self.effector_type:
+            self.get_logger().info(f"revo2_type: {self.revo2_type}")
         self.get_logger().info(f"tcp_offset: {self.tcp_offset}")
         self.get_logger().info(f"gripper_default_effort: {self.gripper_default_effort}")
         self.get_logger().info(f"control_enabled: {self.control_enabled}")
@@ -215,6 +237,29 @@ class AgxArmRosNode(Node):
             else:
                 self.get_logger().error("Failed to initialize Revo2 hand")
                 self.hand = None
+        elif self.effector_type == "revo2_touch":
+            self.hand = Revo2TouchWrapper(self.agx_arm, hand_side=self.revo2_type)
+            if self.hand.initialize():
+                self.get_logger().info("Revo2 Touch hand initialized successfully")
+            else:
+                self.get_logger().error("Failed to initialize Revo2 Touch hand")
+                self.hand = None
+
+    def _get_finger_position_max(self, finger_attr: str) -> float:
+        if self.effector_type == "revo2_touch":
+            return float(REVO2_TOUCH_FINGER_POSITION_MAX[finger_attr])
+        return REVO2_FINGER_POSITION_MAX[finger_attr]
+
+    def _get_hand_joint_names(self):
+        if self.hand is None:
+            return []
+        if self.hand.is_hand_left():
+            return REVO2_LEFT_HAND_JOINT_NAMES
+        if self.hand.is_hand_right():
+            return REVO2_RIGHT_HAND_JOINT_NAMES
+        if self.revo2_type == "left":
+            return REVO2_LEFT_HAND_JOINT_NAMES
+        return REVO2_RIGHT_HAND_JOINT_NAMES
 
     def _setup_publishers(self):
         self.joint_states_pub = self.create_publisher(
@@ -236,7 +281,7 @@ class AgxArmRosNode(Node):
             self.gripper_status_pub = self.create_publisher(
                 GripperStatus, "feedback/gripper_status", 1
             )
-        if self.hand is not None:
+        if self.hand is not None and self.effector_type == "revo2":
             self.hand_status_pub = self.create_publisher(
                 HandStatus, "feedback/hand_status", 1
             )
@@ -263,7 +308,7 @@ class AgxArmRosNode(Node):
         self.create_subscription(
             MoveMITMsg, "control/move_mit", self._move_mit_callback, 1
         )
-        if self.hand is not None:
+        if self.hand is not None and self.effector_type == "revo2":
             self.create_subscription(
                 HandCmd, "control/hand", self._hand_cmd_callback, 1
             )
@@ -427,13 +472,17 @@ class AgxArmRosNode(Node):
         finger_pos = self.hand.get_finger_position()
         if finger_pos is None:
             return []
-        joint_names = REVO2_LEFT_HAND_JOINT_NAMES if self.hand.is_hand_left() else REVO2_RIGHT_HAND_JOINT_NAMES
+        joint_names = self._get_hand_joint_names()
         
         result = []
         for joint_name in joint_names:
             attr = REVO2_HAND_JOINT_TO_FINGER_ATTR[joint_name][0]
             max_angle = REVO2_HAND_JOINT_TO_FINGER_ATTR[joint_name][1]
-            joint_value = max(0.0, min(max_angle, getattr(finger_pos, attr, 0) * max_angle / 100))
+            finger_max = self._get_finger_position_max(attr)
+            joint_value = max(
+                0.0,
+                min(max_angle, getattr(finger_pos, attr, 0) * max_angle / finger_max),
+            )
             result.append((joint_name, joint_value, 0.0, 0.0))
         
         return result
@@ -585,7 +634,7 @@ class AgxArmRosNode(Node):
     def _publish_effector_status(self):
         if self.gripper is not None and self.gripper.is_ok():
             self._publish_gripper_status()
-        if self.hand is not None and self.hand.is_ok():
+        if self.hand is not None and self.hand.is_ok() and self.effector_type == "revo2":
             self._publish_hand_status()
 
     ### arm control callbacks
@@ -620,11 +669,13 @@ class AgxArmRosNode(Node):
             self.get_logger().warn(str(e))
 
     def _control_hand_joints(self, joint_pos):
-        hand_joints = {
-            name : max(0, min(100, int(value / REVO2_HAND_JOINT_TO_FINGER_ATTR[name][1] * 100)))
-            for name, value in joint_pos.items()
-            if name in REVO2_HAND_JOINT_NAMES
-        }
+        hand_joints = {}
+        for name, value in joint_pos.items():
+            if name not in REVO2_HAND_JOINT_NAMES:
+                continue
+            attr, max_angle = REVO2_HAND_JOINT_TO_FINGER_ATTR[name]
+            finger_max = self._get_finger_position_max(attr)
+            hand_joints[name] = max(0, int(value / max_angle * finger_max))
         if not hand_joints:
             return
     

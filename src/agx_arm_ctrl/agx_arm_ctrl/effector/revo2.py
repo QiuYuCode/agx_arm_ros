@@ -71,6 +71,7 @@ class Revo2Wrapper:
     CURRENT_MAX: int = 100
     TIME_MIN: int = 0
     TIME_MAX: int = 255  # Unit: 10ms
+    DEFAULT_POSITION_TIME: int = 5
     
     # Motor status constants
     MOTOR_STATUS_IDLE: int = 0      # Idle
@@ -259,7 +260,11 @@ class Revo2Wrapper:
         filled = self._fill_with_current_position(**finger_values)
         
         try:
-            self._effector.position_ctrl(**filled)
+            self._effector.position_time_ctrl(mode='pos', **filled)
+            self._effector.position_time_ctrl(
+                mode='time',
+                **dict.fromkeys(self.FINGER_NAMES, self.DEFAULT_POSITION_TIME),
+            )
             return True
         except Exception as e:
             print(f"[Revo2Wrapper] Position control failed: {e}")

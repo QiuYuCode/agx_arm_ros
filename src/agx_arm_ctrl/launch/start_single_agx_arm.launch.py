@@ -37,8 +37,15 @@ def generate_launch_description():
     effector_type_arg = DeclareLaunchArgument(
         'effector_type',
         default_value='none',
-        choices=['none', 'agx_gripper', 'revo2'],
-        description='End effector type (e.g. agx_gripper, revo2).'
+        choices=['none', 'agx_gripper', 'revo2', 'revo2_touch'],
+        description='End effector type (e.g. agx_gripper, revo2, revo2_touch).'
+    )
+
+    revo2_type_arg = DeclareLaunchArgument(
+        'revo2_type',
+        default_value='left',
+        choices=['left', 'right'],
+        description='Revo2 / Revo2 Touch hand side (left or right).',
     )
 
     auto_enable_arg = DeclareLaunchArgument(
@@ -109,6 +116,7 @@ def generate_launch_description():
             'speed_percent': LaunchConfiguration('speed_percent'),
             'enable_timeout': LaunchConfiguration('enable_timeout'),
             'effector_type': LaunchConfiguration('effector_type'),
+            'revo2_type': LaunchConfiguration('revo2_type'),
             'tcp_offset': LaunchConfiguration('tcp_offset'),
             'gripper_default_effort': LaunchConfiguration('gripper_default_effort'),
             'control_enabled': LaunchConfiguration('control_enabled'),
@@ -149,6 +157,7 @@ def generate_launch_description():
         can_port_arg,
         arm_type_arg,
         effector_type_arg,
+        revo2_type_arg,
         auto_enable_arg,
         fast_mode_arg,
         speed_percent_arg,
