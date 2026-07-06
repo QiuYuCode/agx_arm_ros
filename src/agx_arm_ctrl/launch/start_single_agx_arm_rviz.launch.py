@@ -3,7 +3,7 @@ from launch_ros.actions import Node
 from launch.actions import (
     DeclareLaunchArgument, IncludeLaunchDescription,
 )
-from launch.substitutions import LaunchConfiguration
+from launch.substitutions import LaunchConfiguration, PythonExpression
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 import os
 from ament_index_python.packages import get_package_share_directory
@@ -41,15 +41,15 @@ def generate_launch_description():
     effector_type_arg = DeclareLaunchArgument(
         'effector_type',
         default_value='none',
-        choices=['none', 'agx_gripper', 'revo2'],
-        description='End effector type (e.g. agx_gripper, revo2).'
+        choices=['none', 'agx_gripper', 'revo2', 'revo2_touch'],
+        description='End effector type (e.g. agx_gripper, revo2, revo2_touch).'
     )
 
     revo2_type_arg = DeclareLaunchArgument(
        'revo2_type',
         default_value='left',
         choices=['left', 'right'],
-        description='Revo2 end effector type (e.g. left, right).'
+        description='Revo2 / Revo2 Touch hand side (left or right).',
     )
 
     auto_enable_arg = DeclareLaunchArgument(
@@ -122,6 +122,11 @@ def generate_launch_description():
         description='Default effort for gripper commands (>= 0.0).'
     )
 
+    urdf_effector_type = PythonExpression([
+        "'revo2' if '", LaunchConfiguration('effector_type'), "' == 'revo2_touch' else '",
+        LaunchConfiguration('effector_type'), "'",
+    ])
+
     # description:统一使用 agx_arm_description/launch/display.launch.py
     description_launch = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
@@ -134,7 +139,7 @@ def generate_launch_description():
         launch_arguments={
             'namespace': LaunchConfiguration('namespace'),
             'arm_type': LaunchConfiguration('arm_type'),
-            'effector_type': LaunchConfiguration('effector_type'),
+            'effector_type': urdf_effector_type,
             'revo2_type': LaunchConfiguration('revo2_type'),
             'pub_rate': LaunchConfiguration('pub_rate'),
             'follow': LaunchConfiguration('follow'),
@@ -164,6 +169,7 @@ def generate_launch_description():
             'speed_percent': LaunchConfiguration('speed_percent'),
             'enable_timeout': LaunchConfiguration('enable_timeout'),
             'effector_type': LaunchConfiguration('effector_type'),
+            'revo2_type': LaunchConfiguration('revo2_type'),
             'tcp_offset': LaunchConfiguration('tcp_offset'),
             'gripper_default_effort': LaunchConfiguration('gripper_default_effort'),
         }.items(),
@@ -188,8 +194,8 @@ def generate_launch_description():
         feedback_topic_arg,
         control_topic_arg,
         control_arg,
-        # description
-        description_launch,
         # agx_arm
         agx_arm_launch,
+        # description
+        description_launch,
     ])

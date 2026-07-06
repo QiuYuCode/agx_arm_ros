@@ -2,7 +2,7 @@ from launch import LaunchDescription
 from launch.actions import (
     DeclareLaunchArgument, IncludeLaunchDescription,
 )
-from launch.substitutions import LaunchConfiguration, IfElseSubstitution
+from launch.substitutions import LaunchConfiguration, IfElseSubstitution, PythonExpression
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 import os
 from ament_index_python.packages import get_package_share_directory
@@ -39,15 +39,15 @@ def generate_launch_description():
     effector_type_arg = DeclareLaunchArgument(
         'effector_type',
         default_value='none',
-        choices=['none', 'agx_gripper', 'revo2'],
-        description='End effector type (e.g. agx_gripper, revo2).'
+        choices=['none', 'agx_gripper', 'revo2', 'revo2_touch'],
+        description='End effector type (e.g. agx_gripper, revo2, revo2_touch).'
     )
 
     revo2_type_arg = DeclareLaunchArgument(
        'revo2_type',
         default_value='left',
         choices=['left', 'right'],
-        description='Revo2 end effector type (e.g. left, right).'
+        description='Revo2 / Revo2 Touch hand side (left or right).',
     )
 
     auto_enable_arg = DeclareLaunchArgument(
@@ -126,6 +126,11 @@ def generate_launch_description():
         description='SetBool gate service for agx_arm_control_gate when auto_control_gate:=true.',
     )
 
+    moveit_effector_type = PythonExpression([
+        "'revo2' if '", LaunchConfiguration('effector_type'), "' == 'revo2_touch' else '",
+        LaunchConfiguration('effector_type'), "'",
+    ])
+
     # ── agx_arm_ctrl ─────────────────────────────────────────────────
     agx_arm_launch = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
@@ -146,6 +151,7 @@ def generate_launch_description():
             'speed_percent': LaunchConfiguration('speed_percent'),
             'enable_timeout': LaunchConfiguration('enable_timeout'),
             'effector_type': LaunchConfiguration('effector_type'),
+            'revo2_type': LaunchConfiguration('revo2_type'),
             'tcp_offset': LaunchConfiguration('tcp_offset'),
             'gripper_default_effort': LaunchConfiguration('gripper_default_effort'),
             'control_enabled': IfElseSubstitution(
@@ -168,7 +174,7 @@ def generate_launch_description():
         launch_arguments={
             'namespace': LaunchConfiguration('namespace'),
             'arm_type': LaunchConfiguration('arm_type'),
-            'effector_type': LaunchConfiguration('effector_type'),
+            'effector_type': moveit_effector_type,
             'revo2_type': LaunchConfiguration('revo2_type'),
             'tcp_offset': LaunchConfiguration('tcp_offset'),
             'follow': LaunchConfiguration('follow'),

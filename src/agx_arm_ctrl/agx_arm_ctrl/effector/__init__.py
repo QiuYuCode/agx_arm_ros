@@ -15,6 +15,8 @@ from .revo2 import (
     FingerCurrent,
 )
 
+from .revo2_touch import Revo2TouchWrapper
+
 __all__ = [
     # AgxGripper
     'AgxGripperWrapper',
@@ -27,5 +29,7 @@ __all__ = [
     'FingerPosition',
     'FingerSpeed',
     'FingerCurrent',
+    # Revo2 Touch
+    'Revo2TouchWrapper',
 ]
 

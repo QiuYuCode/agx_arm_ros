@@ -27,7 +27,7 @@ def declare_common_args():
         DeclareLaunchArgument(
             "revo2_type", default_value="left",
             choices=ALL_REVO2_TYPES,
-            description="Revo2 side (used when effector_type is revo2).",
+            description="Revo2 / Revo2 Touch hand side (when effector_type is revo2 or revo2_touch).",
         ),
         DeclareLaunchArgument(
             "tcp_offset",

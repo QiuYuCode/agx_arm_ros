@@ -214,7 +214,7 @@ def generate_launch_description():
         'revo2_type',
         default_value='left',
         choices=['left', 'right'],
-        description='Revo2 end effector type (e.g. left, right).'
+        description='Revo2 / Revo2 Touch hand side (left or right).',
     )
     pub_rate_arg = DeclareLaunchArgument(
         'pub_rate',
