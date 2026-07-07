@@ -346,7 +346,7 @@
   <xacro:unless value="$(eval arm_type == 'nero')">
     <group_state name="home" group="arm">
       <joint name="joint1" value="0" />
-      <joint name="joint2" value="0" />
+      <joint name="joint2" value="1.3962634016" />
       <joint name="joint3" value="0" />
       <joint name="joint4" value="0" />
       <joint name="joint5" value="0" />
@@ -356,7 +356,7 @@
   <xacro:if value="$(eval arm_type == 'nero')">
     <group_state name="home" group="arm">
       <joint name="joint1" value="0" />
-      <joint name="joint2" value="0" />
+      <joint name="joint2" value="1.3962634016" />
       <joint name="joint3" value="0" />
       <joint name="joint4" value="0" />
       <joint name="joint5" value="0" />

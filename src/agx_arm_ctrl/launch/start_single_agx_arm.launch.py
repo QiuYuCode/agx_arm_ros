@@ -64,7 +64,7 @@ def generate_launch_description():
 
     speed_percent_arg = DeclareLaunchArgument(
         'speed_percent',
-        default_value='100',
+        default_value='20',
         description='Movement speed as a percentage of maximum speed.'
     )
 
