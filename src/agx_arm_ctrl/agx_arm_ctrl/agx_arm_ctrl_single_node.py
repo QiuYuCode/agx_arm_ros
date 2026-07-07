@@ -320,6 +320,7 @@ class AgxArmRosNode(Node):
     def _setup_services(self):
         self.create_service(SetBool, "enable_agx_arm", self._enable_callback)
         self.create_service(SetBool, "control_enable", self._control_gate_callback)
+        self.create_service(SetBool, "set_teach_mode", self._set_teach_mode_callback)
         self.create_service(Empty, "move_home", self._move_home_callback)
         self.create_service(Empty, "emergency_stop", self._emergency_stop_callback)
         if not self.is_switch_seamlessly:
@@ -894,6 +895,35 @@ class AgxArmRosNode(Node):
         response.success = True
         response.message = f"External control gate {state}"
         self.get_logger().info(response.message)
+        return response
+
+    def _set_teach_mode_callback(self, request, response):
+        try:
+            if not self._check_arm_ready():
+                response.success = False
+                response.message = "Agx_arm is not connected"
+                return response
+            if not self.is_nero:
+                response.success = False
+                response.message = "set_teach_mode only supports Nero"
+                return response
+
+            if request.data:
+                self.control_enabled = False
+                self._control_gate_block_logged = False
+                self.agx_arm.set_leader_mode()
+                response.message = "Nero entered teach mode"
+            else:
+                self.agx_arm.set_normal_mode()
+                self.control_enabled = True
+                self._control_gate_block_logged = False
+                response.message = "Nero exited teach mode"
+            response.success = True
+            self.get_logger().info(response.message)
+        except Exception as e:
+            response.success = False
+            response.message = f"Exception occurred: {str(e)}"
+            self.get_logger().error(f"Failed to set teach mode: {str(e)}")
         return response
 
     def _emergency_stop_callback(self, request, response):
