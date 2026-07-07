@@ -914,10 +914,10 @@ class AgxArmRosNode(Node):
                 self.agx_arm.set_leader_mode()
                 response.message = "Nero entered teach mode"
             else:
-                self.agx_arm.set_normal_mode()
+                self.agx_arm.set_follower_mode()
                 self.control_enabled = True
                 self._control_gate_block_logged = False
-                response.message = "Nero exited teach mode"
+                response.message = "Nero entered follower mode"
             response.success = True
             self.get_logger().info(response.message)
         except Exception as e:
