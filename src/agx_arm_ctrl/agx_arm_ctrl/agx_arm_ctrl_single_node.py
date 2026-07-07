@@ -899,7 +899,7 @@ class AgxArmRosNode(Node):
 
     def _set_teach_mode_callback(self, request, response):
         try:
-            if not self._check_arm_ready():
+            if request.data and not self._check_arm_ready():
                 response.success = False
                 response.message = "Agx_arm is not connected"
                 return response
