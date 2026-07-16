@@ -915,6 +915,10 @@ class AgxArmRosNode(Node):
                 response.message = "Nero entered teach mode"
             else:
                 self.agx_arm.set_follower_mode()
+                if not self._enable_arm(True, self.enable_timeout):
+                    response.success = False
+                    response.message = "Nero exited teach mode but failed to enable joints"
+                    return response
                 self.control_enabled = True
                 self._control_gate_block_logged = False
                 response.message = "Nero entered follower mode"
