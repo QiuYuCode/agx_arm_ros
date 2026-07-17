@@ -2,6 +2,7 @@ from launch import LaunchDescription
 from launch_ros.actions import Node
 from launch.actions import DeclareLaunchArgument
 from launch.substitutions import LaunchConfiguration
+from launch_ros.parameter_descriptions import ParameterValue
 import os
 
 os.environ["RCUTILS_COLORIZED_OUTPUT"] = "1"
@@ -98,6 +99,10 @@ def generate_launch_description():
         choices=['true', 'false'],
         description='Whether to accept /control/* commands.',
     )
+    autostart_arg = DeclareLaunchArgument(
+        'autostart', default_value='true', choices=['true', 'false'],
+        description='Automatically configure and activate the lifecycle node.'
+    )
 
     # node
     agx_arm_node = Node(
@@ -120,6 +125,7 @@ def generate_launch_description():
             'tcp_offset': LaunchConfiguration('tcp_offset'),
             'gripper_default_effort': LaunchConfiguration('gripper_default_effort'),
             'control_enabled': LaunchConfiguration('control_enabled'),
+            'autostart': ParameterValue(LaunchConfiguration('autostart'), value_type=bool),
         }],
         remappings=[
             # feedback topics
@@ -166,6 +172,7 @@ def generate_launch_description():
         tcp_offset_arg,
         gripper_default_effort_arg,
         control_enabled_arg,
+        autostart_arg,
         # node
         agx_arm_node,
     ])

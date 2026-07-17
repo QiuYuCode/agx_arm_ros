@@ -6,7 +6,7 @@ import math
 import threading
 from typing import Optional
 from pyAgxArm import create_agx_arm_config, AgxArmFactory, ArmModel, PiperFW, NeroFW
-from rclpy.node import Node
+from rclpy.lifecycle import LifecycleNode, State, TransitionCallbackReturn
 from sensor_msgs.msg import JointState
 from builtin_interfaces.msg import Time
 from std_srvs.srv import SetBool, Empty
@@ -65,13 +65,27 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from pyAgxArm.api.agx_arm_factory import PiperCanDefaultConfig
 
-class AgxArmRosNode(Node):
+class AgxArmRosNode(LifecycleNode):
 
     def __init__(self):
         super().__init__("agx_arm_ctrl_single_node")
 
         ### ros parameters
         self._declare_parameters()
+        self.declare_parameter("autostart", True)
+        self.agx_arm = None
+        self.gripper = None
+        self.hand = None
+        self.publisher_thread = None
+        self._publisher_stop = threading.Event()
+        self._base_entities = {
+            "publishers": set(self.publishers),
+            "subscriptions": set(self.subscriptions),
+            "clients": set(self.clients),
+            "services": set(self.services),
+        }
+
+    def on_configure(self, _state: State) -> TransitionCallbackReturn:
         self._load_parameters()
         self._log_parameters()
 
@@ -90,9 +104,66 @@ class AgxArmRosNode(Node):
         ### services
         self._setup_services()
 
-        ### publisher thread
+        return TransitionCallbackReturn.SUCCESS
+
+    def on_activate(self, _state: State) -> TransitionCallbackReturn:
+        if self.auto_enable and not self._enable_arm(True, self.enable_timeout):
+            self.get_logger().error("Failed to enable arm during activation")
+            return TransitionCallbackReturn.FAILURE
+        self._publisher_stop.clear()
         self.publisher_thread = threading.Thread(target=self._publish_thread)
         self.publisher_thread.start()
+        return TransitionCallbackReturn.SUCCESS
+
+    def on_deactivate(self, _state: State) -> TransitionCallbackReturn:
+        self._publisher_stop.set()
+        if self.publisher_thread is not None:
+            self.publisher_thread.join(timeout=max(1.0, 2.0 / self.pub_rate))
+        self.publisher_thread = None
+        self.control_ready = False
+        if self.enable_flag and not self._enable_arm(False, self.enable_timeout):
+            return TransitionCallbackReturn.FAILURE
+        return TransitionCallbackReturn.SUCCESS
+
+    def on_cleanup(self, _state: State) -> TransitionCallbackReturn:
+        if self.agx_arm is not None:
+            self.agx_arm.disconnect()
+        for entity in list(self.publishers):
+            if entity not in self._base_entities["publishers"]:
+                self.destroy_publisher(entity)
+        for entity in list(self.subscriptions):
+            if entity not in self._base_entities["subscriptions"]:
+                self.destroy_subscription(entity)
+        for entity in list(self.clients):
+            if entity not in self._base_entities["clients"]:
+                self.destroy_client(entity)
+        for entity in list(self.services):
+            if entity not in self._base_entities["services"]:
+                self.destroy_service(entity)
+        self.agx_arm = None
+        self.gripper = None
+        self.hand = None
+        return TransitionCallbackReturn.SUCCESS
+
+    def on_shutdown(self, state: State) -> TransitionCallbackReturn:
+        if self.publisher_thread is not None:
+            result = self.on_deactivate(state)
+            if result != TransitionCallbackReturn.SUCCESS:
+                return result
+        return self.on_cleanup(state)
+
+    def on_error(self, state: State) -> TransitionCallbackReturn:
+        self._publisher_stop.set()
+        if self.publisher_thread is not None:
+            self.publisher_thread.join(timeout=1.0)
+        self.publisher_thread = None
+        if self.agx_arm is not None:
+            try:
+                self.agx_arm.disconnect()
+            except Exception:
+                pass
+        self.agx_arm = None
+        return TransitionCallbackReturn.SUCCESS
 
     ### initialization methods
     def _declare_parameters(self):
@@ -127,7 +198,7 @@ class AgxArmRosNode(Node):
             self.get_logger().error(
                 f"Unsupported arm_type '{self.arm_type}', expected one of {list(ArmModel.__dict__.values())}."
             )
-            exit(1)
+            raise ValueError(f"Unsupported arm_type: {self.arm_type}")
 
         if self.gripper_default_effort < 0:
             self.get_logger().warn(
@@ -173,12 +244,8 @@ class AgxArmRosNode(Node):
         self.arm_joint_names = list(config["joint_limits"].keys())
         self.arm_joint_count = self.agx_arm.joint_nums
 
-        if self.auto_enable:
-            if not self._enable_arm(True, self.enable_timeout):
-                self.get_logger().error("Failed to auto-enable the arm")
-        else:
-            time.sleep(0.1)
-            self.enable_flag = self.agx_arm.get_joint_enable_status(255)
+        time.sleep(0.1)
+        self.enable_flag = self.agx_arm.get_joint_enable_status(255)
 
         start_time = time.time()
         while time.time() - start_time < self.enable_timeout:
@@ -214,7 +281,7 @@ class AgxArmRosNode(Node):
                 self.agx_arm.connect()
         else:
             self.get_logger().error("Failed to get firmware version")
-            exit(1)
+            raise RuntimeError("Failed to get firmware version")
 
         self.agx_arm.set_speed_percent(self.speed_percent)
         self.agx_arm.set_tcp_offset(self.tcp_offset)
@@ -434,7 +501,7 @@ class AgxArmRosNode(Node):
         rate = self.create_rate(self.pub_rate)
 
         # publishing loop
-        while rclpy.ok():
+        while rclpy.ok() and not self._publisher_stop.is_set():
             if self.agx_arm.is_ok():
                 if not self.control_ready and self._check_arm_ready():
                     self.control_ready = True
@@ -984,16 +1051,24 @@ class AgxArmRosNode(Node):
 
 def main(args=None):
     rclpy.init(args=args)
-
+    node = None
     try:
         node = AgxArmRosNode()
+        if bool(node.get_parameter("autostart").value):
+            if node.trigger_configure() != TransitionCallbackReturn.SUCCESS:
+                raise RuntimeError("agx_arm configure failed")
+            if node.trigger_activate() != TransitionCallbackReturn.SUCCESS:
+                raise RuntimeError("agx_arm activate failed")
         rclpy.spin(node)
     except KeyboardInterrupt:
         pass
     except Exception as e:
         print(f"Error occurred: {e}")
     finally:
-        rclpy.shutdown()
+        if node is not None:
+            node.destroy_node()
+        if rclpy.ok():
+            rclpy.shutdown()
 
 
 if __name__ == "__main__":
