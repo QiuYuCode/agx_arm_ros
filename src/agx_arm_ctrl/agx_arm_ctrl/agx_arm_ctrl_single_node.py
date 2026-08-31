@@ -652,6 +652,12 @@ class AgxArmRosNode(LifecycleNode):
             velocity.append(vel)
             effort.append(eff)
 
+        for name, pos, vel, eff in self._get_hand_joint_data():
+            names.append(name)
+            positions.append(pos)
+            velocity.append(vel)
+            effort.append(eff)
+
         msg.name = names
         msg.position = positions
         msg.velocity = velocity
